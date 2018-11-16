@@ -23,19 +23,8 @@
     },
     "require": {
         "php": ">=5.5.9",
-        "doctrine/dbal": "^2.5",
-        "intervention/image": "^2.3",
-        "laravel/scout": "^3.0",
-        "algolia/algoliasearch-client-php": "^1.18"
     },
     "require-dev": {
         
-    },
-    "extra": {
-        "laravel": {
-            "providers": [
-                "Helori\\LaravelFiles\\FilesServiceProvider"
-            ]
-        }
     }
 }

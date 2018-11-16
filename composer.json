@@ -1,0 +1,41 @@
+{
+    "name": "helori/laravel-files",
+    "description": "",
+    "keywords": ["laravel", "files", "upload"],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Helori Lanos",
+            "email": "helori@algoart.fr",
+            "homepage": "https://algoart.fr"
+        }
+    ],
+    "repositories": [
+        {
+            "type": "git",
+            "url": "https://github.com/helori/laravel-files.git"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Helori\\LaravelFiles\\": "src/"
+        }
+    },
+    "require": {
+        "php": ">=5.5.9",
+        "doctrine/dbal": "^2.5",
+        "intervention/image": "^2.3",
+        "laravel/scout": "^3.0",
+        "algolia/algoliasearch-client-php": "^1.18"
+    },
+    "require-dev": {
+        
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Helori\\LaravelFiles\\FilesServiceProvider"
+            ]
+        }
+    }
+}

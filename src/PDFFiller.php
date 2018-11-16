@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Utilities;
+namespace Helori\LaravelFiles;
 
 use Illuminate\Support\Str;
 use setasign\Fpdi\Fpdi;

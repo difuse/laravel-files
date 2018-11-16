@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Utilities;
+namespace Helori\LaravelFiles;
 
 use ZipArchive;
 

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Utilities;
+namespace Helori\LaravelFiles;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;

@@ -22,7 +22,9 @@
         }
     },
     "require": {
-        "php": ">=5.7"
+        "php": ">=5.7",
+        "setasign/fpdf": "^1.8",
+        "setasign/fpdi": "^1.6"
     },
     "require-dev": {
         

@@ -3,12 +3,51 @@
 namespace Helori\LaravelFiles;
 
 use Helori\LaravelFiles\Shell;
+use Imagick;
 
 
 class PdfUtilities
 {
     protected static $dpiA4WidthFactor = 8.26666667;
     protected static $dpiA4HeightFactor = 11.69333333;
+
+    /**
+     * Count number of pages
+     * @return string $filepath
+     * @return string $disk
+     */
+    public static function pages(string $filepath, string $disk)
+    {
+        $pages = 1;
+        if(strpos(mime_content_type($abspath), 'pdf') !== false) {
+            $imagick = new Imagick($abspath);
+            $pages = $imagick->getNumberImages();
+        }
+        return $pages;
+    }
+
+    /**
+     * Combine multiple PDF files in a single temporary one
+     * @param  array $inputFilepaths Array of absolute paths of the PDF to combine
+     * @return string Absolute path of the resulting file
+     */
+    public static function combinePdfs(array $inputFilepaths)
+    {
+        $finalPath = sys_get_temp_dir().uniqId().'.pdf';
+
+        $cmd = "gs";
+        $args = "-q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -sOutputFile=$finalPath ";
+        
+        foreach($inputFilepaths as $filepath) {
+            if(is_file($filepath)){
+                $args .= $filepath." ";
+            }
+        }
+
+        Shell::runCommand($cmd, $args);
+
+        return $finalPath;
+    }
 
     public static function convertImageToPdf(string $imgPath, string $pdfPath, array $options = [])
     {
@@ -89,35 +128,12 @@ class PdfUtilities
         $args .= " -quality {$opts['quality']}";
         $args .= " {$imgSafePath}";
 
-        self::runCommand($cmd, $args);
+        Shell::runCommand($cmd, $args);
 
         if(!is_file($imgPath)){
             throw new \Exception("The file \"".$imgPath."\" has not been created", 500);
         }
 
         return true;
-    }
-
-    /**
-     * Combine multiple PDF files in a single temporary one
-     * @param  array $inputFilepaths Array of absolute paths of the PDF to combine
-     * @return string Absolute path of the resulting file
-     */
-    public static function combinePdfs(array $inputFilepaths)
-    {
-        $finalPath = sys_get_temp_dir().uniqId().'.pdf';
-
-        $cmd = "gs";
-        $args = "-q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -sOutputFile=$finalPath ";
-        
-        foreach($inputFilepaths as $filepath) {
-            if(is_file($filepath)){
-                $args .= $filepath." ";
-            }
-        }
-
-        self::runCommand($cmd, $args);
-
-        return $finalPath;
     }
 }

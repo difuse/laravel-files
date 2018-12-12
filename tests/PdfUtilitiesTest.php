@@ -10,7 +10,7 @@ class PdfUtilitiesTest extends TestCase
 {
     public function fileDir()
     {
-        return dirname(__DIR__).'/Files/';
+        return __DIR__.'/Files/';
     }
 
     public function testNumPages()

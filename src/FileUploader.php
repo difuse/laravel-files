@@ -106,6 +106,7 @@ class FileUploader
                 'filepath' => $filepath,
                 'mime' => mime_content_type($abspath),
                 'size' => filesize($abspath),
+                'extension' => $file_ext,
                 'decache' => filemtime($abspath),
                 //'pages' => $pages,
             ];

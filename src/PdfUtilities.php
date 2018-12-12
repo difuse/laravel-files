@@ -31,8 +31,6 @@ class PdfUtilities
      */
     public static function combinePdfs(array $inputFilepaths, string $targetPath)
     {
-        //$finalPath = sys_get_temp_dir().uniqId().'.pdf';
-
         if(empty($inputFilepaths)){
             throw new \Exception("Cannot combine PDF files : empty file list", 500);
         }

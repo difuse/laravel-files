@@ -113,7 +113,7 @@ class PdfUtilities
         if($mime !== 'application/pdf'){
             throw new \Exception("The file \"".$pdfPath."\" is not a PDF", 500);
         }
-
+        
         $pdfSafePath = escapeshellarg($pdfPath);
         $imgSafePath = escapeshellarg($imgPath);
 

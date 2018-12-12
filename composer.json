@@ -1,8 +1,9 @@
 {
     "name": "helori/laravel-files",
-    "description": "",
-    "keywords": ["laravel", "files", "upload"],
+    "description": "Utilities to manipulate images and PDF files",
+    "keywords": ["helori", "image", "pdf", "convert", "compress", "zip", "optimize", "combine"],
     "license": "MIT",
+    "homepage": "https://github.com/helori/laravel-files",
     "authors": [
         {
             "name": "Helori Lanos",
@@ -16,18 +17,27 @@
             "url": "https://github.com/helori/laravel-files.git"
         }
     ],
-    "autoload": {
-        "psr-4": {
-            "Helori\\LaravelFiles\\": "src/"
-        }
-    },
     "require": {
-        "php": ">=5.7",
+        "php" : "^7.0",
+        "ext-imagick" : "*",
         "setasign/fpdf": "^1.8",
         "setasign/fpdi": "^2.0",
         "intervention/image": "2.*"
     },
     "require-dev": {
-        
+        "phpunit/phpunit": "~7.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Helori\\LaravelFiles\\": "src"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Helori\\LaravelFiles\\Test\\": "tests"
+        }
+    },
+    "scripts": {
+        "test": "phpunit"
     }
 }

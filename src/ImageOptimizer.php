@@ -195,6 +195,8 @@ class ImageOptimizer
         $args .= ' --strip-icc';
         // Strip XMP profiles from output file.
         $args .= ' --strip-xmp';
+        // Quiet mode
+        $args .= ' --quiet';
 
         if(is_null($targetPath)){
 

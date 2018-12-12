@@ -7,38 +7,38 @@ use Intervention\Image\ImageManagerStatic as Image;
 
 class ImageConverter
 {
-    /**
+	/**
      * A4 DPI width factor
      * @var  string $dpiA4WidthFactor
      */
-    protected static $dpiA4WidthFactor = 8.26666667;
+	protected static $dpiA4WidthFactor = 8.26666667;
 
-    /**
+	/**
      * A4 DPI height factor
      * @var  string $dpiA4HeightFactor
      */
     protected static $dpiA4HeightFactor = 11.69333333;
 
-    /**
+	/**
      * Convert image to another image format
-     * Intervention\Image does a great job here => no need to re-invent the wheel
-     *
+	 * Intervention\Image does a great job here => no need to re-invent the wheel
+	 *
      * @param  string $srcPath The absolute path of the image to convert.
      * @param  string $tgtPath The path of the resulting image. The extension will be used as the conversion format.
      * @return boolean true on success
      */
-    public static function convertImage(string $srcPath, string $tgtPath)
-    {
-        // configure with favored image driver (gd by default)
-        Image::configure(['driver' => 'imagick']);
-        Image::make($srcPath)->save($tgtPath);
+	public static function convertImage(string $srcPath, string $tgtPath)
+	{
+		// configure with favored image driver (gd by default)
+		Image::configure(['driver' => 'imagick']);
+		Image::make($srcPath)->save($tgtPath);
 
-        return true;
-    }
+		return true;
+	}
 
-    /**
+	/**
      * Convert image to PDF
-     *
+	 *
      * @param  string $imgPath The absolute path of the image to convert.
      * @param  string $pdfPath The path of the resulting PDF
      * @param  array $options List of options for the resulting PDF
@@ -93,7 +93,7 @@ class ImageConverter
 
     /**
      * Convert PDF to image
-     *
+	 *
      * @param  string $pdfPath The absolute path of the pdf to convert.
      * @param  string $imgPath The path of the resulting image.
      * @param  array $options List of options for the resulting image

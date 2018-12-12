@@ -5,23 +5,16 @@ namespace Helori\LaravelFiles;
 use setasign\Fpdi\Fpdi;
 
 
-class PDFFiller extends FPDI
+class PdfFiller extends FPDI
 {
-    public $font_family = 'Arial';
-    public $font_style = '';
-
     public $shiftX = 0;
     public $shiftY = 0;
-
-    public $fill_r = 245;
-    public $fill_g = 250;
-    public $fill_b = 100;
 
     public function __construct($orientation, $unit, $format){
         
         parent::__construct($orientation, $unit, $format);
         
-        $this->SetFillColor($this->fill_r, $this->fill_g, $this->fill_b);
+        $this->SetFillColor(245, 250, 100);
         $this->SetFont('Helvetica', '');
         $this->SetTextColor(30, 30, 30);
         $this->SetFontSize(8);
@@ -29,35 +22,35 @@ class PDFFiller extends FPDI
         $this->SetAutoPageBreak(false);
     }
 
-    public function setFontStyle($style){
-        $this->font_style = $style;
-        $this->updateFont();
-    }
-
-    public function resetFillColor(){
-        $this->SetFillColor($this->fill_r, $this->fill_g, $this->fill_b);
-    }
-
-    public function updateFont(){
-        $this->SetFont($this->font_family, $this->font_style);
-    }
-
-    function Footer()
+    /**
+     * Write text on the current page
+     * 
+     * @param  int $x top left x position of the text box
+     * @param  int $x top left y position of the text box
+     * @param  int $w width of the text box
+     * @param  int $h height of the text box
+     * @param  string $text Text to write in the box
+     * @param  string $align Alignment (L, R, C)
+     * @param  string|null $suffix Text suffix
+     * @return void
+     */
+    public function cell_text(int $x, int $y, int $w, int $h, string $text, string $align = 'L', string $suffix = null)
     {
-        $this->SetY(0);
-    }
-
-    public function cell_text($x, $y, $w, $h, $text, $align = 'L', $suffix = null){
         $text = $this->encode($text.$suffix);
         $this->SetXY($x - $this->shiftX, $y - $this->shiftY);
         $this->Cell($w, $h, $text, 0, 0, $align, true);
     }
 
-    protected function encode($str){
+    /**
+     * Encode text to write on PDF
+     * 
+     * @param  string $text Text to encode
+     * @return string Encoded text
+     */
+    protected function encode(string $text){
         //setlocale(LC_ALL,'fr_FR.UTF-8');
         //$str = Str::ascii($str, 'fr');
         //return @iconv('UTF-8', 'ASCII//TRANSLIT', $str);
-        return @iconv('UTF-8', 'windows-1252', $str);
-        return $str;
+        return @iconv('UTF-8', 'windows-1252', $text);
     }
 }

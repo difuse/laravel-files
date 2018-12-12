@@ -8,19 +8,16 @@ use Imagick;
 
 class PdfUtilities
 {
-    protected static $dpiA4WidthFactor = 8.26666667;
-    protected static $dpiA4HeightFactor = 11.69333333;
-
     /**
      * Count number of pages
-     * @return string $filepath
-     * @return string $disk
+     * @param  string $filepath Absolute path PDF  of the resulting PDF file
+     * @return int Number of pages in the PDF document
      */
-    public static function pages(string $filepath, string $disk)
+    public static function numPages(string $filepath)
     {
         $pages = 1;
-        if(strpos(mime_content_type($abspath), 'pdf') !== false) {
-            $imagick = new Imagick($abspath);
+        if(strpos(mime_content_type($filepath), 'pdf') !== false) {
+            $imagick = new Imagick($filepath);
             $pages = $imagick->getNumberImages();
         }
         return $pages;
@@ -28,110 +25,112 @@ class PdfUtilities
 
     /**
      * Combine multiple PDF files in a single temporary one
-     * @param  array $inputFilepaths Array of absolute paths of the PDF to combine
-     * @return string Absolute path of the resulting file
+     * @param  array $inputFilepaths Array of absolute paths of the PDF files to combine
+     * @param  string $inputFilepaths Absolute path of the resulting PDF file
+     * @return boolean true on success
      */
-    public static function combinePdfs(array $inputFilepaths)
+    public static function combinePdfs(array $inputFilepaths, string $targetPath)
     {
-        $finalPath = sys_get_temp_dir().uniqId().'.pdf';
+        //$finalPath = sys_get_temp_dir().uniqId().'.pdf';
 
-        $cmd = "gs";
-        $args = "-q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -sOutputFile=$finalPath ";
-        
-        foreach($inputFilepaths as $filepath) {
-            if(is_file($filepath)){
-                $args .= $filepath." ";
+        if(empty($inputFilepaths)){
+            throw new \Exception("Cannot combine PDF files : empty file list", 500);
+        }
+
+        foreach($inputFilepaths as $inputFilepath){
+
+            if(!is_file($inputFilepath)){
+
+                throw new \Exception("Cannot combine PDF files : a listed file is missing", 500);
+
+            }else if(mime_content_type($inputFilepath) !== 'application/pdf'){
+
+                throw new \Exception("Cannot combine PDF files : input files must be all in PDF format", 500);
             }
         }
 
-        Shell::runCommand($cmd, $args);
+        // Disables character caching.  Useful only for debugging.
+        $args = ' -dNOCACHE';
+        // Quiet startup: suppress normal startup messages, and also do the equivalent of -dQUIET.
+        $args .= ' -q';
+        // Exit after last file
+        $args = ' -dBATCH';
+        // Disables the prompt and pause at the end of each page.  This may be desirable for applications where another program is driving Ghostscript.
+        $args .= ' -dNOPAUSE';
+        //Restricts  file operations the job can perform.  Strongly recommended for spoolers, conversion scripts or other sensitive environments where a badly written or malicious PostScript program code must be prevented from changing important files.
+        $args .= ' -dSAFER';
+        // Selects an alternate initial output device
+        $args .= ' -sDEVICE=pdfwrite';
+        // Selects an alternate output file (or pipe) for the initial output device
+        $args .= ' -sOutputFile='.escapeshellarg($targetPath);
+        // Input files
+        $args .= ' '.implode(" ", $inputFilepaths);
 
-        return $finalPath;
-    }
-
-    public static function convertImageToPdf(string $imgPath, string $pdfPath, array $options = [])
-    {
-        $opts = array_merge([
-            'dpi' => 150,
-            'marginWidthPercent' => 0,
-        ], $options);
-
-        if(!is_file($imgPath)){
-            throw new \Exception("The file \"".$imgPath."\" doesn't exist", 500);
-        }
-
-        $mime = mime_content_type($imgPath);
-        if(strpos($mime, 'image') !== 0){
-            throw new \Exception("The file \"".$imgPath."\" is not an image", 500);
-        }
-
-        $marginWidthPercent = min(100, max(0, intVal($opts['marginWidthPercent']))) / 100;
-
-        $w = self::$dpiA4WidthFactor * $opts['dpi'];
-        $h = self::$dpiA4HeightFactor * $opts['dpi'];
-        $m = 2 * ($w * $marginWidthPercent);
-
-        $cmd = "convert";
-        $args = "-background white";
-        //$args .= " -page a4";
-        $args .= " -units PixelsPerInch";
-        $args .= " -density {$opts['dpi']}";
-        $args .= " -bordercolor white";
-        $args .= " -border {$m}";
-        $args .= " -resize {$w}x{$h}"; // keeps aspect ratio (result is contained in the box)
-        //$args .= " -repage {$w}x{$h}";
-        $args .= " -gravity center";
-        $args .= " -extent {$w}x{$h}";
-        $args .= " -compress Zip";
-        $args .= " -quality 100";
-        $args .= " -flatten";
-        $args .= " {$imgPath} {$pdfPath}";
-
-        Shell::runCommand($cmd, $args);
-
-        if(!is_file($pdfPath)){
-            throw new \Exception("The file \"".$pdfPath."\" has not been created", 500);
-        }
+        Shell::runCommand('gs', $args);
 
         return true;
     }
 
-    public static function convertPdfToImage(string $pdfPath, string $imgPath, array $options = [])
+    /**
+     * Flatten a PDF (useful to ensure that a PDF is correctly encoded for further operations)
+     *
+     * @param  string $sourceFile Absolute path of the PDF file
+     * @param  string|null $targetPath Absolute path of the resulting file (if null, the input file is replaced)
+     * @return boolean true on success
+     */
+    public static function flattenPdf(string $sourceFile, string $targetPath = null)
     {
-        $opts = array_merge([
-            'page' => 0,
-            'dpi' => 150,
-            'quality' => 100,
-            'trim' => false,
-        ], $options);
+        if(!is_file($sourceFile)){
 
-        if(!is_file($pdfPath)){
-            throw new \Exception("The file \"".$pdfPath."\" doesn't exist", 500);
+            throw new \Exception("Source file is missing", 500);
+
+        }else if(mime_content_type($sourceFile) !== 'application/pdf'){
+
+            throw new \Exception("Cannot flatten PDF file : input file must be in PDF format", 500);
         }
 
-        $mime = mime_content_type($pdfPath);
-        if($mime !== 'application/pdf'){
-            throw new \Exception("The file \"".$pdfPath."\" is not a PDF", 500);
+        // Disables character caching.  Useful only for debugging.
+        $args = ' -dNOCACHE';
+        // Quiet startup: suppress normal startup messages, and also do the equivalent of -dQUIET.
+        $args .= ' -q';
+        // Exit after last file
+        $args = ' -dBATCH';
+        // Disables the prompt and pause at the end of each page.  This may be desirable for applications where another program is driving Ghostscript.
+        $args .= ' -dNOPAUSE';
+        //Restricts  file operations the job can perform.  Strongly recommended for spoolers, conversion scripts or other sensitive environments where a badly written or malicious PostScript program code must be prevented from changing important files.
+        $args .= ' -dSAFER';
+        // Selects an alternate initial output device
+        $args .= ' -sDEVICE=pdfwrite';
+
+        if(is_null($targetPath)){
+
+            // CANNOT USE "WRITE TO STDOUT" : Ghostscript needs to read from the source file 
+            // after opening the target, so they cannot be the same file. 
+
+            // Send output to standard output (requires "-q" option to be set)
+            //$args .= ' -sOutputFile=-';
+            // Input file replaced
+            //$args .= ' '.escapeshellarg($sourceFile).' > '.escapeshellarg($sourceFile);
+
+            // INSTEAD : write to temporary file, then replace input file
+            $tmpFile = sys_get_temp_dir().uniqId().'.pdf';
+            // Selects an alternate output file (or pipe) for the initial output device
+            $args .= ' -sOutputFile='.escapeshellarg($tmpFile);
+        
+        }else{
+
+            // Selects an alternate output file (or pipe) for the initial output device
+            $args .= ' -sOutputFile='.escapeshellarg($targetPath);
         }
 
-        $pdfSafePath = escapeshellarg($pdfPath);
-        $imgSafePath = escapeshellarg($imgPath);
+        // Input file
+        $args .= ' '.escapeshellarg($sourceFile);
 
-        $cmd = "convert";
-        $args = "-units PixelsPerInch";
-        $args .= " -density {$opts['dpi']}";
-        if($opts['trim']){
-            $args .= " -trim";  
-        }
-        $args .= " {$pdfSafePath}[{$opts['page']}]";
-        $args .= " -flatten";
-        $args .= " -quality {$opts['quality']}";
-        $args .= " {$imgSafePath}";
+        Shell::runCommand('gs', $args);
 
-        Shell::runCommand($cmd, $args);
-
-        if(!is_file($imgPath)){
-            throw new \Exception("The file \"".$imgPath."\" has not been created", 500);
+        // Replace input file if required
+        if(is_null($targetPath)){
+            copy($tmpFile, $sourceFile);
         }
 
         return true;

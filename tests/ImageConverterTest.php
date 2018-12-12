@@ -2,7 +2,7 @@
 
 namespace Tests\Unit;
 
-use PHPUnit\Framework\TestCase
+use PHPUnit\Framework\TestCase;
 use Helori\LaravelFiles\ImageConverter;
 
 

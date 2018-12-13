@@ -13,16 +13,31 @@ use Imagick;
 
 class FileUploader
 {
-    public static function uploadFiles(Request $request, $docPath)
+    /**
+     * Upload multiple files on the server to a specific location and return the files data.
+     * The HTTP request must contain uploaded files which will be moved to the $docPath folder
+     * The $config array can contain the following keys :
+     * - $file-param : the request key prefix corresponding to the files (eg: "file-" for file-0, file-1, file-2, ...)
+     * - $file-name : the file name to be used. If unset, the original file name will be used
+     * - $file-name-prefix : the prefix to be added to the file name
+     * - $file-name-suffix : the suffix to be added to the file name
+     *
+     * @param  Request $request
+     * @param  string $docPath
+     * @param  array $config
+     * @return Collection Uploaded files data
+     */
+    public static function uploadFiles(Request $request, $docPath, array $config = [])
     {
-        $file_prefix = 'file-';
+        $fileParam = isset($config['file-param']) ? $config['file-param'] : 'file-';
+
         $items = collect([]);
         $i = 0;
 
-        while($request->hasFile($file_prefix.$i))
+        while($request->hasFile($fileParam.$i))
         {
-            $item = $this->uploadFile($request, $docPath, [
-                'file-param' => $file_prefix.$i
+            $item = self::uploadFile($request, $docPath, [
+                'file-param' => $fileParam.$i
             ]);
             $items->push($item);
             ++$i;
@@ -42,7 +57,7 @@ class FileUploader
      * @param  Request $request
      * @param  string $docPath
      * @param  array $config
-     * @return void
+     * @return array Uploaded files data
      */
     public static function uploadFile(Request $request, string $docPath, array $config = [])
     {
@@ -106,7 +121,6 @@ class FileUploader
                 'filepath' => $filepath,
                 'mime' => mime_content_type($abspath),
                 'size' => filesize($abspath),
-                'extension' => $file_ext,
                 'decache' => filemtime($abspath),
                 //'pages' => $pages,
             ];
@@ -126,73 +140,74 @@ class FileUploader
         }
     }
 
-    public static function renameFile(&$file, $title, $doc_path)
+    public static function renameFile(string $filepath, string $newFilenameNoExt)
     {
-        if($title){
-
-            $old_filename = $file->filename;
-            $old_filepath = $file->filepath;
-            $old_abspath = storage_path('app').'/'.$old_filepath;
-
-            if(is_file($old_abspath))
-            {
-                $infos = pathinfo($old_abspath);
-                $file_ext = $infos['extension'];
-
-                $new_slug = Str::slug($file->id.'-'.$title, '-');
-                $new_filename = $new_slug.'.'.$file_ext;
-                $new_filepath = $doc_path.'/'.$new_filename;
-                $new_abspath = storage_path('app').'/'.$new_filepath;
-
-                rename($old_abspath, $new_abspath);
-
-                return [
-                    'title' => $title,
-                    'slug' => $new_slug,
-                    'filename' => $new_filename,
-                    'filepath' => $new_filepath,
-                ];
-
-            }else{
-                abort(404, 'Cound not rename file not found at path : '.$file->filepath);
-            }
+        if(!Storage::has($filepath)){
+            abort(404, "File not found");
         }
-        return [];
+
+        $old_abspath = storage_path('app').'/'.$filepath;
+
+        $infos = pathinfo($old_abspath);
+        $ext = $infos['extension'];
+        $filename = $infos['basename'];
+        $absDir = $infos['dirname'];
+        $relDir = substr($filepath, 0, strripos($filepath, $filename) - 1);
+        
+        $new_slug = Str::slug($newFilenameNoExt, '-');
+        $new_filename = $new_slug.'.'.$ext;
+        $new_filepath = $relDir.'/'.$new_filename;
+        $new_abspath = storage_path('app').'/'.$new_filepath;
+
+        rename($old_abspath, $new_abspath);
+
+        return [
+            'slug' => $new_slug,
+            'filename' => $new_filename,
+            'filepath' => $new_filepath,
+        ];
     }
 
-    public static function openFile($filepath, $filename)
+    protected static function absPath(string $filepath)
     {
-        if(Storage::has($filepath)){
+        if(is_file($filepath)){
 
-            $abspath = storage_path('app').'/'.$filepath;
-            $infos = pathinfo($abspath);
-            $mime = mime_content_type($abspath);
-            $ext = $infos['extension'];
+            // filepath is an absolute path
+            return $filepath;
 
-            return response()->make(file_get_contents($abspath), 200, [
+        }else if(Storage::has($filepath)){
+
+            // filepath is a relative path
+            return storage_path('app').'/'.$filepath;
+        
+        }else{
+            abort(404, "File not found");
+        }
+    }
+
+    public static function downloadOrOpenDocument(string $filepath, string $filename, bool $forceDownload)
+    {
+        $abspath = self::absPath($filepath);
+
+        $infos = pathinfo($abspath);
+        $mime = mime_content_type($abspath);
+        $ext = $infos['extension'];
+        $browserCanDisplay = Str::contains($mime, ['image', 'pdf']);
+        $filenameExt = ($filename ? $filename.'.'.$ext : null);
+
+        if($browserCanDisplay && !$forceDownload){
+
+            return response()->file($abspath, [
                 'Content-Type' => $mime,
-                'Content-Disposition' => 'inline; '.($filename ? $filename.'.'.$ext : null),
+                'Content-Disposition' => 'inline; '.$filenameExt,
+                'Cache-Control' => 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0',
             ]);
-        }
-        else{
-            abort(404, "File not found");
-        }
-    }
 
-    public static function downloadFile($filepath, $filename)
-    {
-        if(Storage::has($filepath)){
+        }else{
 
-            $abspath = storage_path('app').'/'.$filepath;
-            $infos = pathinfo($abspath);
-            $ext = $infos['extension'];
-
-            return response()->download($abspath, $filename ? $filename.'.'.$ext : null, [
-                'Cache-Control' => 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0'
+            return response()->download($abspath, $filenameExt, [
+                'Cache-Control' => 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0',
             ]);
-        }
-        else{
-            abort(404, "File not found");
         }
     }
 

@@ -16,7 +16,10 @@ class Shell
 
         if($returnOutput){
 
-            $output = passthru($cmd.' '.$args, $resultCode);
+            ob_start();
+            passthru($cmd.' '.$args, $resultCode);
+            $output = ob_get_contents();
+            ob_end_clean();
 
         }else{
 

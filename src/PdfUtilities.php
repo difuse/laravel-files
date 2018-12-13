@@ -26,10 +26,10 @@ class PdfUtilities
     /**
      * Combine multiple PDF files in a single temporary one
      * @param  array $inputFilepaths Array of absolute paths of the PDF files to combine
-     * @param  string $inputFilepaths Absolute path of the resulting PDF file
+     * @param  string $targetPath Absolute path of the resulting PDF file, or null to return the file's content
      * @return boolean true on success
      */
-    public static function combinePdfs(array $inputFilepaths, string $targetPath)
+    public static function combinePdfs(array $inputFilepaths, string $targetPath = null)
     {
         if(empty($inputFilepaths)){
             throw new \Exception("Cannot combine PDF files : empty file list", 500);
@@ -59,14 +59,33 @@ class PdfUtilities
         $args .= ' -dSAFER';
         // Selects an alternate initial output device
         $args .= ' -sDEVICE=pdfwrite';
-        // Selects an alternate output file (or pipe) for the initial output device
-        $args .= ' -sOutputFile='.escapeshellarg($targetPath);
+
+        if(is_null($targetPath)){
+
+            // This option is useful, particularly with input from PostScript files that may print to stdout
+            $args .= ' -sstdout=%stderr';
+            // Write to stdout
+            $args .= ' -sOutputFile=-';
+
+        }else{
+
+            // Selects an alternate output file for the initial output device
+            $args .= ' -sOutputFile='.escapeshellarg($targetPath);
+        }
+            
         // Input files
         $args .= ' '.implode(" ", $inputFilepaths);
 
-        Shell::runCommand('gs', $args);
+        if(is_null($targetPath)){
 
-        return true;
+            $result = Shell::runCommand('gs', $args, true, true);
+            return $result['output'];
+
+        }else{
+
+            Shell::runCommand('gs', $args);
+            return true;
+        }
     }
 
     /**

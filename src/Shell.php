@@ -5,28 +5,36 @@ namespace Helori\LaravelFiles;
 
 class Shell
 {
-    public static function runCommand(string $cmd, string $args, bool $throw = true)
+    public static function runCommand(string $cmd, string $args, bool $throw = true, bool $returnOutput = false)
     {
-        if(!function_exists('exec')){
+        if($returnOutput && !function_exists('passthru')){
+            throw new \Exception('The "passthru" function cannot be executed on this server');
+        }
+        if(!$returnOutput && !function_exists('exec')){
             throw new \Exception('The "exec" function cannot be executed on this server');
         }
 
-        @exec($cmd.' '.$args, $output, $resultCode);
+        if($returnOutput){
+
+            $output = passthru($cmd.' '.$args, $resultCode);
+
+        }else{
+
+            @exec($cmd.' '.$args, $output, $resultCode);
+        }
 
         if($resultCode !== 0){
 
-            $message = implode(' | ', $output);
+            $message = is_array($output) ? implode(' | ', $output) : $output;
 
             if($throw){
                 throw new \Exception($message, 500);    
-            }else{
-                return [
-                    'code' => $resultCode,
-                    'message' => $message,
-                ];
             }
         }
-
-        return true;
+        
+        return [
+            'code' => $resultCode,
+            'output' => is_array($output) ? implode(' | ', $output) : $output,
+        ];
     }
 }

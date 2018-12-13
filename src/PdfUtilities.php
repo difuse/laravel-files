@@ -52,7 +52,7 @@ class PdfUtilities
         // Quiet startup: suppress normal startup messages, and also do the equivalent of -dQUIET.
         $args .= ' -q';
         // Exit after last file
-        $args = ' -dBATCH';
+        $args .= ' -dBATCH';
         // Disables the prompt and pause at the end of each page.  This may be desirable for applications where another program is driving Ghostscript.
         $args .= ' -dNOPAUSE';
         //Restricts  file operations the job can perform.  Strongly recommended for spoolers, conversion scripts or other sensitive environments where a badly written or malicious PostScript program code must be prevented from changing important files.
@@ -92,7 +92,7 @@ class PdfUtilities
         // Quiet startup: suppress normal startup messages, and also do the equivalent of -dQUIET.
         $args .= ' -q';
         // Exit after last file
-        $args = ' -dBATCH';
+        $args .= ' -dBATCH';
         // Disables the prompt and pause at the end of each page.  This may be desirable for applications where another program is driving Ghostscript.
         $args .= ' -dNOPAUSE';
         //Restricts  file operations the job can perform.  Strongly recommended for spoolers, conversion scripts or other sensitive environments where a badly written or malicious PostScript program code must be prevented from changing important files.

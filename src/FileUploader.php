@@ -6,9 +6,9 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
+use Helori\LaravelFiles\ImageConverter;
 use App\Http\Requests;
 use Carbon\Carbon;
-use Imagick;
 
 
 class FileUploader
@@ -185,7 +185,7 @@ class FileUploader
         }
     }
 
-    public static function downloadOrOpenDocument(string $filepath, string $filename, bool $forceDownload)
+    public static function downloadOrOpenFile(string $filepath, string $filename, bool $forceDownload)
     {
         $abspath = self::absPath($filepath);
 
@@ -211,47 +211,36 @@ class FileUploader
         }
     }
 
-    public static function previewFile(&$file)
+    public static function previewFile(string $filepath)
     {
-        if(Storage::has($file->filepath)){
-
-            $abspath = storage_path('app').'/'.$file->filepath;
-            $infos = pathinfo($abspath);
-            $ext = $infos['extension'];
-
-            $content = null;
-            $mime = $file->mime;
-
-            if(Str::contains($file->mime, 'image')) {
-
-                $content = file_get_contents($abspath);
-
-            }else if(Str::contains($file->mime, 'pdf')){
-
-                $imagick = new Imagick();
-                $imagick->setResolution(200, 200);
-                $imagick->setColorspace(Imagick::COLORSPACE_RGB);
-                $imagick->readImage(sprintf('%s[%s]', $abspath, 0));
-                $imagick->setImageCompression(Imagick::COMPRESSION_JPEG);
-                $imagick->setCompressionQuality(90);
-                $imagick->setImageFormat('jpg');
-                $imagick->setImageBackgroundColor('white');
-                $imagick->setImageAlphaChannel(Imagick::ALPHACHANNEL_REMOVE);
-                $imagick = $imagick->mergeImageLayers(Imagick::LAYERMETHOD_FLATTEN);
-                
-                $content = $imagick->getImageBlob();
-            }
-
-            if(!is_null($content)){
-                return response()->make($content, 200, [
-                    'Content-Type' => $file->mime,
-                    'Content-Disposition' => 'inline; '.$file->title.'.'.$ext,
-                ]);
-            }
-
-        }
-        else{
+        if(!Storage::has($filepath)){
             abort(404, "File not found");
-        } 
+        }
+
+        $abspath = storage_path('app').'/'.$filepath;
+        $mime = mime_content_type($abspath);
+        $infos = pathinfo($abspath);
+        $content = null;
+
+        if(Str::contains($mime, 'image')) {
+
+            $content = file_get_contents($abspath);
+
+        }else if(Str::contains($mime, 'pdf')){
+
+            $content = ImageConverter::convertPdfToImage($abspath, null, [
+                'dpi' => 72,
+                'quality' => 90,
+            ]);
+        }
+
+        if(!is_null($content)){
+
+            return response()->make($content, 200, [
+                'Content-Type' => $mime,
+                'Content-Disposition' => 'inline; '.$infos['basename'],
+                'Cache-Control' => 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0',
+            ]);
+        }
     }
 }

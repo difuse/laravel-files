@@ -7,38 +7,38 @@ use Intervention\Image\ImageManagerStatic as Image;
 
 class ImageConverter
 {
-	/**
+    /**
      * A4 DPI width factor
      * @var  string $dpiA4WidthFactor
      */
-	protected static $dpiA4WidthFactor = 8.26666667;
+    protected static $dpiA4WidthFactor = 8.26666667;
 
-	/**
+    /**
      * A4 DPI height factor
      * @var  string $dpiA4HeightFactor
      */
     protected static $dpiA4HeightFactor = 11.69333333;
 
-	/**
+    /**
      * Convert image to another image format
-	 * Intervention\Image does a great job here => no need to re-invent the wheel
-	 *
+     * Intervention\Image does a great job here => no need to re-invent the wheel
+     *
      * @param  string $srcPath The absolute path of the image to convert.
      * @param  string $tgtPath The path of the resulting image. The extension will be used as the conversion format.
      * @return boolean true on success
      */
-	public static function convertImage(string $srcPath, string $tgtPath)
-	{
-		// configure with favored image driver (gd by default)
-		Image::configure(['driver' => 'imagick']);
-		Image::make($srcPath)->save($tgtPath);
+    public static function convertImage(string $srcPath, string $tgtPath)
+    {
+        // configure with favored image driver (gd by default)
+        Image::configure(['driver' => 'imagick']);
+        Image::make($srcPath)->save($tgtPath);
 
-		return true;
-	}
+        return true;
+    }
 
-	/**
+    /**
      * Convert image to PDF
-	 *
+     *
      * @param  string $imgPath The absolute path of the image to convert.
      * @param  string $pdfPath The path of the resulting PDF
      * @param  array $options List of options for the resulting PDF
@@ -93,13 +93,13 @@ class ImageConverter
 
     /**
      * Convert PDF to image
-	 *
+     *
      * @param  string $pdfPath The absolute path of the pdf to convert.
-     * @param  string $imgPath The path of the resulting image.
+     * @param  string|null $imgPath The path of the resulting image. If null, a JPG image will be sent to STDOUT
      * @param  array $options List of options for the resulting image
      * @return boolean true on success
      */
-    public static function convertPdfToImage(string $pdfPath, string $imgPath, array $options = [])
+    public static function convertPdfToImage(string $pdfPath, string $imgPath = null, array $options = [])
     {
         $opts = array_merge([
             'page' => 0,
@@ -129,14 +129,21 @@ class ImageConverter
         $args .= " {$pdfSafePath}[{$opts['page']}]";
         $args .= " -flatten";
         $args .= " -quality {$opts['quality']}";
-        $args .= " {$imgSafePath}";
 
-        Shell::runCommand($cmd, $args);
+        if(!is_null($imgPath)){
 
-        if(!is_file($imgPath)){
-            throw new \Exception("The file \"".$imgPath."\" has not been created", 500);
+            $args .= " {$imgSafePath}";
+            Shell::runCommand($cmd, $args);
+            if(!is_file($imgPath)){
+                throw new \Exception("The file \"".$imgPath."\" has not been created", 500);
+            }
+            return true;
+
+        }else{
+
+            $args .= " jpg:-"; // Magic syntax to send to STDOUT
+            $result = Shell::runCommand($cmd, $args, true, true);
+            return $result['output'];
         }
-
-        return true;
     }
 }

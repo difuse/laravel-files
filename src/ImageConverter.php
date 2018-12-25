@@ -97,7 +97,7 @@ class ImageConverter
      * @param  string $pdfPath The absolute path of the pdf to convert.
      * @param  string|null $imgPath The path of the resulting image. If null, a JPG image will be sent to STDOUT
      * @param  array $options List of options for the resulting image
-     * @return boolean true on success
+     * @return boolean|binary true on success or image content if $imgPath is null
      */
     public static function convertPdfToImage(string $pdfPath, string $imgPath = null, array $options = [])
     {

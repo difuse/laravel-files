@@ -121,18 +121,10 @@ class PdfUtilities
 
         if(is_null($targetPath)){
 
-            // CANNOT USE "WRITE TO STDOUT" : Ghostscript needs to read from the source file 
-            // after opening the target, so they cannot be the same file. 
-
-            // Send output to standard output (requires "-q" option to be set)
-            //$args .= ' -sOutputFile=-';
-            // Input file replaced
-            //$args .= ' '.escapeshellarg($sourceFile).' > '.escapeshellarg($sourceFile);
-
-            // INSTEAD : write to temporary file, then replace input file
-            $tmpFile = sys_get_temp_dir().uniqId().'.pdf';
-            // Selects an alternate output file (or pipe) for the initial output device
-            $args .= ' -sOutputFile='.escapeshellarg($tmpFile);
+            // This option is useful, particularly with input from PostScript files that may print to stdout
+            $args .= ' -sstdout=%stderr';
+            // Write to stdout
+            $args .= ' -sOutputFile=-';
         
         }else{
 
@@ -143,11 +135,14 @@ class PdfUtilities
         // Input file
         $args .= ' '.escapeshellarg($sourceFile);
 
-        Shell::runCommand('gs', $args);
-
-        // Replace input file if required
         if(is_null($targetPath)){
-            copy($tmpFile, $sourceFile);
+
+            $result = Shell::runCommand('gs', $args, true, true);
+            file_put_contents($sourceFile, $result['output']);
+
+        }else{
+
+            Shell::runCommand('gs', $args);
         }
 
         return true;

@@ -120,7 +120,7 @@ class ImageOptimizer
             throw new \Exception("The file doesn't exist", 500);
         }
 
-        // Check if mime type corresponds to a jpeg file
+        // Check if mime type corresponds to a png file
         $mimes = [
             'image/png',
             'image/x-png',
@@ -132,10 +132,11 @@ class ImageOptimizer
             throw new \Exception("The mime type $mime doesn't correspond to a PNG file", 500);
         }
 
-        // Remove optional chunks (metadata) from PNG files.
-        $args = ' --strip';
+        // Remove optional chunks (metadata) from PNG files 
+        // INCOMPATIBLE WITH MAX VERSION 2.5 ON UBUNTU 16.04
+        //$args = ' --strip';
         // Overwrite existing output files. “--ext .png --force” can be used to convert files in place (which is unsafe).
-        $args .= ' --force';
+        $args = ' --force';
         // --quality min-max : min and max are numbers in range 0 (worst) to 100 (perfect), similar to JPEG. pngquant will use the least amount of colors required to meet or exceed the max quality. If conversion results in quality below the min quality the image won't be saved (or if outputting to stdin, 24-bit original will be output) and pngquant will exit with status code 99.
         $args .= ' --quality 0-'.$quality;
 

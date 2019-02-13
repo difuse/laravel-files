@@ -128,7 +128,7 @@ class FileUploader
             return $item;
         
         }else{
-            abort(422, 'No input file found for '.$file_param);
+            abort(422, 'No input file found for '.$fileParam);
         }
     }
 

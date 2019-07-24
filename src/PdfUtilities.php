@@ -118,6 +118,8 @@ class PdfUtilities
         $args .= ' -dSAFER';
         // Selects an alternate initial output device
         $args .= ' -sDEVICE=pdfwrite';
+        // Do not break links
+        $args .= ' -dPrinted=false';
 
         if(is_null($targetPath)){
 

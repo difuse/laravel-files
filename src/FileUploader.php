@@ -77,6 +77,7 @@ class FileUploader
             //  Get uploaded file infos
             // -----------------------------------------------------------
             $file_ext = $file->guessExtension();
+            // getClientOriginalExtension instead ??
 
             if(is_null($fileName)){
 
@@ -176,7 +177,7 @@ class FileUploader
             return $filepath;
 
         }else if(Storage::has($filepath)){
-
+            
             // filepath is a relative path
             return storage_path('app').'/'.$filepath;
         
@@ -199,7 +200,7 @@ class FileUploader
 
             return response()->file($abspath, [
                 'Content-Type' => $mime,
-                'Content-Disposition' => 'inline; '.$filenameExt,
+                'Content-Disposition' => 'inline; filename="'.$filenameExt.'"',
                 'Cache-Control' => 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0',
             ]);
 
@@ -238,7 +239,7 @@ class FileUploader
 
             return response()->make($content, 200, [
                 'Content-Type' => $mime,
-                'Content-Disposition' => 'inline; '.$infos['basename'],
+                'Content-Disposition' => 'inline; filename="'.$infos['basename'].'"',
                 'Cache-Control' => 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0',
             ]);
         }

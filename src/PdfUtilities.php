@@ -149,4 +149,80 @@ class PdfUtilities
 
         return true;
     }
+
+    /**
+     * Compress a PDF
+     *
+     * @param  string $sourceFile Absolute path of the PDF file
+     * @param  string|null $targetPath Absolute path of the resulting file (if null, the input file is replaced)
+     * @param  string $mode Compression mode to use
+     * @return boolean true on success
+     */
+    public static function compressPdf(string $sourceFile, string $targetPath = null, string $mode = 'screen')
+    {
+        $allowedModes = ['printer', 'screen', 'ebook', 'prepress', 'default'];
+
+        if(!is_file($sourceFile)){
+
+            throw new \Exception("Source file is missing", 500);
+
+        }else if(mime_content_type($sourceFile) !== 'application/pdf'){
+
+            throw new \Exception("Cannot compress PDF file : input file must be in PDF format", 500);
+        
+        }else if(!in_array($mode, $allowedModes)){
+
+            throw new \Exception("Compression mode invalid. Choose one of the following : ".implode(', ', $allowedModes), 500);
+        }
+
+        // Disables character caching. Useful only for debugging.
+        $args = ' -dNOCACHE';
+        // Quiet startup: suppress normal startup messages, and also do the equivalent of -dQUIET.
+        $args .= ' -q';
+        // Exit after last file
+        $args .= ' -dBATCH';
+        // Disables the prompt and pause at the end of each page.  This may be desirable for applications where another program is driving Ghostscript.
+        $args .= ' -dNOPAUSE';
+        //Restricts  file operations the job can perform.  Strongly recommended for spoolers, conversion scripts or other sensitive environments where a badly written or malicious PostScript program code must be prevented from changing important files.
+        $args .= ' -dSAFER';
+        // Selects an alternate initial output device
+        $args .= ' -sDEVICE=pdfwrite';
+        // Do not break links
+        $args .= ' -dPrinted=false';
+
+        // printer : selects output similar to the Acrobat Distiller "Print Optimized" setting.
+        // screen : selects low-resolution output similar to the Acrobat Distiller "Screen Optimized" setting.
+        // ebook : selects medium-resolution output similar to the Acrobat Distiller "eBook" setting.
+        // prepress : selects output similar to Acrobat Distiller "Prepress Optimized" setting.
+        // default : selects output intended to be useful across a wide variety of uses, possibly at the expense of a larger output file.
+        $args .= ' -dPDFSETTINGS=/'.$mode;
+
+        if(is_null($targetPath)){
+
+            // This option is useful, particularly with input from PostScript files that may print to stdout
+            $args .= ' -sstdout=%stderr';
+            // Write to stdout
+            $args .= ' -sOutputFile=-';
+        
+        }else{
+
+            // Selects an alternate output file (or pipe) for the initial output device
+            $args .= ' -sOutputFile='.escapeshellarg($targetPath);
+        }
+
+        // Input file
+        $args .= ' '.escapeshellarg($sourceFile);
+
+        if(is_null($targetPath)){
+
+            $result = Shell::runCommand('gs', $args, true, true);
+            file_put_contents($sourceFile, $result['output']);
+
+        }else{
+
+            Shell::runCommand('gs', $args);
+        }
+
+        return true;
+    }
 }

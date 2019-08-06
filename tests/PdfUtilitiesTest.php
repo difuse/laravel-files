@@ -62,4 +62,29 @@ class PdfUtilitiesTest extends TestCase
         unlink($srcPath);
         unlink($tgtPath);
     }
+
+    public function testCompressPdf()
+    {
+        $fileDir = $this->fileDir();
+
+        // Copy original file which will be modified
+        copy($fileDir.'test2.pdf', $fileDir.'test2_source.pdf');
+        $srcPath = $fileDir.'test2_source.pdf';
+        $tgtPath = $fileDir.'test2_compressed.pdf';
+        
+        // compress to a new file
+        $result = PdfUtilities::compressPdf($srcPath, $tgtPath, 'screen');
+        $this->assertTrue($result);
+        $this->assertFileExists($tgtPath);
+
+        // compress original file
+        $size = filesize($srcPath);
+        $result = PdfUtilities::compressPdf($srcPath, null, 'screen');
+        clearstatcache(true, $srcPath);
+        $this->assertTrue($result);
+        $this->assertTrue($size > filesize($srcPath));
+
+        unlink($srcPath);
+        unlink($tgtPath);
+    }
 }

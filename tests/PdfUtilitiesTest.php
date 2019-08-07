@@ -63,7 +63,7 @@ class PdfUtilitiesTest extends TestCase
         unlink($tgtPath);
     }
 
-    public function testCompressPdf()
+    public function testCompressPdfFile()
     {
         $fileDir = $this->fileDir();
 
@@ -71,20 +71,55 @@ class PdfUtilitiesTest extends TestCase
         copy($fileDir.'test2.pdf', $fileDir.'test2_source.pdf');
         $srcPath = $fileDir.'test2_source.pdf';
         $tgtPath = $fileDir.'test2_compressed.pdf';
-        
-        // compress to a new file
-        $result = PdfUtilities::compressPdf($srcPath, $tgtPath, 'screen');
-        $this->assertTrue($result);
-        $this->assertFileExists($tgtPath);
-
-        // compress original file
         $size = filesize($srcPath);
-        $result = PdfUtilities::compressPdf($srcPath, null, 'screen');
+
+        // compress to a new file using path
+        $result = PdfUtilities::compressPdfFile($srcPath, $tgtPath, 'screen');
+        $this->assertFileExists($tgtPath);
+        $this->assertTrue($size > filesize($tgtPath));
+        unlink($tgtPath);
+
+        // compress to a new file using path and returning content
+        $content = PdfUtilities::compressPdfFile($srcPath, null, 'screen');
+        file_put_contents($tgtPath, $content);
+        $this->assertFileExists($tgtPath);
+        $this->assertTrue($size > filesize($tgtPath));
+        $this->assertTrue(mime_content_type($tgtPath) === 'application/pdf');
+        unlink($tgtPath);
+
+        // compress original file using path
+        $result = PdfUtilities::compressPdfFile($srcPath, $srcPath, 'screen');
         clearstatcache(true, $srcPath);
-        $this->assertTrue($result);
         $this->assertTrue($size > filesize($srcPath));
+        unlink($srcPath);
+    }
+
+    public function testCompressPdfData()
+    {
+        $fileDir = $this->fileDir();
+
+        // Copy original file which will be modified
+        copy($fileDir.'test2.pdf', $fileDir.'test2_source.pdf');
+        $srcPath = $fileDir.'test2_source.pdf';
+        $tgtPath = $fileDir.'test2_compressed.pdf';
+        $size = filesize($srcPath);
+        $content = file_get_contents($srcPath);
+
+        // compress to a new file using content
+        $result = PdfUtilities::compressPdfData($content, $tgtPath, 'screen');
+        $this->assertFileExists($tgtPath);
+        $this->assertTrue($size > filesize($tgtPath));
+        $this->assertTrue(mime_content_type($tgtPath) === 'application/pdf');
+        unlink($tgtPath);
+
+        // compress to a new file using path and returning content
+        $contentOut = PdfUtilities::compressPdfData($content, null, 'screen');
+        file_put_contents($tgtPath, $contentOut);
+        $this->assertFileExists($tgtPath);
+        $this->assertTrue($size > filesize($tgtPath));
+        $this->assertTrue(mime_content_type($tgtPath) === 'application/pdf');
+        unlink($tgtPath);
 
         unlink($srcPath);
-        unlink($tgtPath);
     }
 }

@@ -66,7 +66,6 @@ class ImageConverter
         $h = self::$dpiA4HeightFactor * $opts['dpi'];
         $m = 2 * ($w * $marginWidthPercent);
 
-        $cmd = "convert";
         $args = "-background white";
         //$args .= " -page a4";
         $args .= " -units PixelsPerInch";
@@ -82,7 +81,7 @@ class ImageConverter
         $args .= " -flatten";
         $args .= " {$imgPath} {$pdfPath}";
 
-        Shell::runCommand($cmd, $args);
+        Shell::runCommand('convert '.$args);
 
         if(!is_file($pdfPath)){
             throw new \Exception("The file \"".$pdfPath."\" has not been created", 500);
@@ -120,7 +119,6 @@ class ImageConverter
         $pdfSafePath = escapeshellarg($pdfPath);
         $imgSafePath = escapeshellarg($imgPath);
 
-        $cmd = "convert";
         $args = "-units PixelsPerInch";
         $args .= " -density {$opts['dpi']}";
         if($opts['trim']){
@@ -133,7 +131,7 @@ class ImageConverter
         if(!is_null($imgPath)){
 
             $args .= " {$imgSafePath}";
-            Shell::runCommand($cmd, $args);
+            Shell::runCommand('convert '.$args);
             if(!is_file($imgPath)){
                 throw new \Exception("The file \"".$imgPath."\" has not been created", 500);
             }
@@ -142,7 +140,7 @@ class ImageConverter
         }else{
 
             $args .= " jpg:-"; // Magic syntax to send to STDOUT
-            $result = Shell::runCommand($cmd, $args, true, true);
+            $result = Shell::runCommand('convert '.$args, true, true);
             return $result['output'];
         }
     }

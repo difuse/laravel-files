@@ -101,7 +101,7 @@ class ImageOptimizer
 
         $args .= ' '.escapeshellarg($imgPath);
 
-        Shell::runCommand('gifsicle', $args);
+        Shell::runCommand('gifsicle '.$args);
 
         return true;
     }
@@ -153,7 +153,7 @@ class ImageOptimizer
 
         $args .= ' '.escapeshellarg($imgPath);
 
-        Shell::runCommand('pngquant', $args);
+        Shell::runCommand('pngquant '.$args);
 
         return true;
     }
@@ -216,7 +216,7 @@ class ImageOptimizer
             //$args .= ' --dest='.escapeshellarg($targetPath);
         }
 
-        Shell::runCommand('jpegoptim', $args);
+        Shell::runCommand('jpegoptim '.$args);
 
         return true;
     }

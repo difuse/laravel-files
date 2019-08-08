@@ -43,39 +43,52 @@ class Shell
         ];
     }
 
-    public static function runCommandFromPipe(string $cmd, string $stdin)
+    public static function runCommandFromPipe(string $cmd, string $stdin = null)
     {
         $start = microtime(true);
 
-        $outfile = tempnam(sys_get_temp_dir(), 'cmd');
+        /*$outfile = tempnam(sys_get_temp_dir(), 'cmd');
         $errfile = tempnam(sys_get_temp_dir(), 'cmd');
-
         if($outfile === false || $errfile === false){
             throw new \Exception("Could not create temporary files");
-        }
+        }*/
 
         $descriptorspec = [
-            ['pipe', 'r'],  // stdin is a pipe that the child will read from
-            ['file', $outfile, 'w'],  // stdout is a file that the child will write to
-            ['file', $errfile, 'w'],  // stderr is a file that the child will write to
+            //0 => ['pipe', 'r'],  // stdin is a pipe that the child will read from
+            //1 => ['file', $outfile, 'w'],  // stdout is a file that the child will write to
+            //2 => ['file', $errfile, 'w'],  // stderr is a file that the child will write to
+            1 => ['pipe', 'w'],
+            2 => ['pipe', 'w'],
         ];
+
+        if(!is_null($stdin)){
+            $descriptorspec[0] = ['pipe', 'r'];
+        }
 
         $process = proc_open($cmd, $descriptorspec, $pipes);
         if($process === false){
             throw new \Exception("Cannot open process for command");
         }
 
-        $result = fwrite($pipes[0], $stdin);
-        if($result === false){
-            throw new \Exception('Could not write input to command process');
+        if(!is_null($stdin)){
+            $result = fwrite($pipes[0], $stdin);
+            if($result === false){
+                throw new \Exception('Could not write input to command process');
+            }
+            fclose($pipes[0]);
         }
-        fclose($pipes[0]);
         
+        $output = stream_get_contents($pipes[1]);
+        $errors = stream_get_contents($pipes[2]);
+
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+
         // It is important to close any pipes before calling proc_close in order to avoid a deadlock
         $resultCode = proc_close($process);
 
-        $output = file($outfile);
-        $errors = file($errfile);
+        //$output = file($outfile);
+        //$errors = file($errfile);
 
         if($resultCode !== 0){
             throw new \Exception($errors);

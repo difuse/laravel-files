@@ -60,52 +60,40 @@ class PdfUtilities
         // Selects an alternate initial output device
         $args .= ' -sDEVICE=pdfwrite';
 
-        if(is_null($targetPath)){
-
-            // This option is useful, particularly with input from PostScript files that may print to stdout
-            $args .= ' -sstdout=%stderr';
-            // Write to stdout
-            $args .= ' -sOutputFile=-';
-
-        }else{
-
-            // Selects an alternate output file for the initial output device
-            $args .= ' -sOutputFile='.escapeshellarg($targetPath);
-        }
-            
-        // Input files
-        $args .= ' '.implode(" ", $inputFilepaths);
+        
+        $cmd ='gs '.$args.' -sstdout=%stderr -sOutputFile=- '.implode(" ", $inputFilepaths);
+        $result = Shell::runCommandFromPipe($cmd);
 
         if(is_null($targetPath)){
-
-            $result = Shell::runCommand('gs '.$args);
             return $result['output'];
-
         }else{
-
-            Shell::runCommand('gs '.$args);
-            return true;
+            file_put_contents($targetPath, $result['output']);
         }
     }
 
     /**
      * Flatten a PDF (useful to ensure that a PDF is correctly encoded for further operations)
      *
-     * @param  string $sourceFile Absolute path of the PDF file
-     * @param  string|null $targetPath Absolute path of the resulting file (if null, the input file is replaced)
-     * @return boolean true on success
+     * @param  string $sourcePath Absolute path of the PDF file
+     * @param  string|null $targetPath Absolute path of the resulting file (if null, the resulting data is returned)
+     * @return void
      */
-    public static function flattenPdf(string $sourceFile, string $targetPath = null)
+    public static function flattenPdfFile(string $sourcePath, string $targetPath = null)
     {
-        if(!is_file($sourceFile)){
+        self::validateSourcePath($sourcePath);
+        $inputData = file_get_contents($sourcePath);
+        return self::flattenPdfData($inputData, $targetPath);
+    }
 
-            throw new \Exception("Source file is missing", 500);
-
-        }else if(mime_content_type($sourceFile) !== 'application/pdf'){
-
-            throw new \Exception("Cannot flatten PDF file : input file must be in PDF format", 500);
-        }
-
+    /**
+     * Flatten PDF data (useful to ensure that a PDF is correctly encoded for further operations)
+     *
+     * @param  string $inputData The input PDF data
+     * @param  string|null $targetPath Absolute path of the resulting file (if null, the resulting data is returned)
+     * @return void
+     */
+    public static function flattenPdfData(string $inputData, string $targetPath = null)
+    {
         // Disables character caching.  Useful only for debugging.
         $args = ' -dNOCACHE';
         // Quiet startup: suppress normal startup messages, and also do the equivalent of -dQUIET.
@@ -121,33 +109,69 @@ class PdfUtilities
         // Do not break links
         $args .= ' -dPrinted=false';
 
-        if(is_null($targetPath)){
-
-            // This option is useful, particularly with input from PostScript files that may print to stdout
-            $args .= ' -sstdout=%stderr';
-            // Write to stdout
-            $args .= ' -sOutputFile=-';
-        
-        }else{
-
-            // Selects an alternate output file (or pipe) for the initial output device
-            $args .= ' -sOutputFile='.escapeshellarg($targetPath);
-        }
-
-        // Input file
-        $args .= ' '.escapeshellarg($sourceFile);
+        $cmd ='gs '.$args.' -sstdout=%stderr -sOutputFile=- -';
+        $result = Shell::runCommandFromPipe($cmd, $inputData);
 
         if(is_null($targetPath)){
-
-            $result = Shell::runCommand('gs '.$args);
-            file_put_contents($sourceFile, $result['output']);
-
+            return $result['output'];
         }else{
+            file_put_contents($targetPath, $result['output']);
+        }
+    }
 
-            Shell::runCommand('gs '.$args);
+    /**
+     * Rotate a PDF file
+     *
+     * @param  string $sourceFile Absolute path of the PDF file
+     * @param  string|null $targetPath Absolute path of the resulting file. Can be same as input to replace . If null, the PDF content is returned.
+     * @param  int $deg The angle to rotate. Allowed values are 90, 180, -90, 270
+     * @param  int $page The page to totate, or null to rotate all pages
+     * @return mixed PDF content or void, depending on $targetPath value
+     */
+    public static function rotatePdfFile(string $sourcePath, string $targetPath = null, int $deg = 90, ?int $page = null)
+    {
+        self::validateSourcePath($sourcePath);
+        $inputData = file_get_contents($sourcePath);
+        return self::rotatePdfData($inputData, $targetPath, $deg, $page);
+    }
+
+    /**
+     * Rotate a PDF
+     *
+     * @param  string $inputData PDF input data
+     * @param  string|null $targetPath Absolute path of the resulting file. Can be same as input to replace . If null, the PDF content is returned.
+     * @param  int $deg The angle to rotate. Allowed values are 90, 180, -90, 270
+     * @param  int $page The page to totate, or null to rotate all pages
+     * @return mixed PDF content or void, depending on $targetPath value
+     */
+    public static function rotatePdfData(string $inputData, string $targetPath = null, int $deg = 90, ?int $page = null)
+    {
+        if(!in_array($deg, [90, 180, -90, 270])){
+            throw new \Exception("Rotating from ".$deg." degrees is not allowed", 500);
         }
 
-        return true;
+        $direction = '';
+        if($deg === 90){
+            $direction = 'right';
+        }else if($deg === 180){
+            $direction = 'down';
+        }else if($deg === 270 || $deg === -90){
+            $direction = 'left';
+        }
+
+        $pages = '1-end'; // All pages
+        if(!is_null($page)){
+            $pages = $page; // Single page
+        }
+
+        $cmd ='pdftk - cat '.$pages.$direction.' output -';
+        $result = Shell::runCommandFromPipe($cmd, $inputData);
+
+        if(is_null($targetPath)){
+            return $result['output'];
+        }else{
+            file_put_contents($targetPath, $result['output']);
+        }
     }
 
     /**
@@ -161,33 +185,21 @@ class PdfUtilities
      */
     public static function compressPdfFile(string $sourcePath, string $targetPath = null, string $mode = 'ebook', ?int $forceResolution = null)
     {
-        $args = self::compressPdfArgs($mode, $forceResolution);
-        return self::run($args, $sourcePath, null, $targetPath);
+        self::validateSourcePath($sourcePath);
+        $inputData = file_get_contents($sourcePath);
+        return self::compressPdfData($inputData, $targetPath, $mode, $forceResolution);
     }
 
     /**
      * Compress PDF data
      *
-     * @param  string $sourceFile Absolute path of the PDF file
+     * @param  string $inputData PDF input data
      * @param  string|null $targetPath Absolute path of the resulting file. Can be same as input to replace . If null, the PDF content is returned.
      * @param  string $mode Compression mode to use
      * @param  int $forceResolution The desired resolution (72, 150, 300, ...)
      * @return mixed PDF content or void, depending on $targetPath value
      */
-    public static function compressPdfData(string $sourceData, string $targetPath = null, string $mode = 'ebook', ?int $forceResolution = null)
-    {
-        $args = self::compressPdfArgs($mode, $forceResolution);
-        return self::run($args, null, $sourceData, $targetPath);
-    }
-
-    /**
-     * Get GS arguments to compress a PDF
-     *
-     * @param  string $mode Compression mode to use
-     * @param  int $forceResolution The desired resolution (72, 150, 300, ...)
-     * @return string arguments
-     */
-    private static function compressPdfArgs(string $mode = 'ebook', ?int $forceResolution = null)
+    public static function compressPdfData(string $inputData, string $targetPath = null, string $mode = 'ebook', ?int $forceResolution = null)
     {
         $allowedModes = ['printer', 'screen', 'ebook', 'prepress', 'default'];
         if(!in_array($mode, $allowedModes)){
@@ -241,77 +253,28 @@ class PdfUtilities
         $args .= ' -dMonoImageDownsampleType=/Subsample';
         $args .= ' -dMonoImageResolution=300';*/
 
-        return $args;
+        $cmd ='gs '.$args.' -sstdout=%stderr -sOutputFile=- -';
+        $result = Shell::runCommandFromPipe($cmd, $inputData);
+
+        if(is_null($targetPath)){
+            return $result['output'];
+        }else{
+            file_put_contents($targetPath, $result['output']);
+        }
     }
 
     /**
-     * Run GS command
+     * Validate input PDF file path
      *
-     * @param  string $args The GS arguments to use.
-     * @param  string $sourcePath The path of the source file, or null to use $sourceContent.
-     * @param  string $sourceContent The PDF content to use as input.
-     * @param  string $targetPath The path to write the result to, or null to return the PDF content.
-     * @return string arguments
+     * @param  string $sourcePath The path of the source file.
+     * @return void
      */
-    private static function run(string $args, ?string $sourcePath, ?string $sourceContent, ?string $targetPath)
+    private static function validateSourcePath(string $sourcePath)
     {
-        // ------------------------------------------------------
-        // Validate arguments
-        // ------------------------------------------------------
-        if(!is_null($sourcePath)){
-            if(!is_file($sourcePath)){
-                throw new \Exception('The input PDF file does not exist');
-            }else if(mime_content_type($sourcePath) !== 'application/pdf'){
-                throw new \Exception('The input file must has the PDF mime type');
-            }
-        }else if(is_null($sourceContent)){
-            throw new \Exception('The input PDF content is null');
-        }
-
-        // ------------------------------------------------------
-        // Set output file path, or '-' for stdout
-        // ------------------------------------------------------
-        
-        // If no target path, output the content.
-        // If sourcePath = targetPath, also output the content to overwrite the source file later.
-        $sendOutput = is_null($targetPath) || ($sourcePath === $targetPath);
-
-        if($sendOutput){
-            // This option is useful, particularly with input from PostScript files that may print to stdout
-            $args .= ' -sstdout=%stderr';
-            // Write to stdout
-            $args .= ' -sOutputFile=-';
-            //$args .= ' -sOutputFile=%stdout';
-        }else{
-            // Selects an alternate output file (or pipe) for the initial output device
-            $args .= ' -sOutputFile='.escapeshellarg($targetPath);
-        }
-
-        // ------------------------------------------------------
-        // Set input file path, or '-' for stdin, then run
-        // ------------------------------------------------------
-        if(is_null($sourcePath)){
-            $args .= ' -';
-        }else{
-            $args .= ' '.escapeshellarg($sourcePath);
-        }
-
-        // ------------------------------------------------------
-        // Run the command (throws exception on error)
-        // ------------------------------------------------------
-        if(is_null($sourceContent)){
-            $result = Shell::runCommand('gs '.$args, $sendOutput);
-        }else{
-            $result = Shell::runCommandFromPipe('gs '.$args, $sourceContent);
-        }
-
-        // ------------------------------------------------------
-        // Send the result output, or write it to $targetPath
-        // ------------------------------------------------------
-        if(is_null($targetPath)){
-            return $result['output'];
-        }else if($targetPath === $sourcePath){
-            file_put_contents($targetPath, $result['output']);
+        if(!is_file($sourcePath)){
+            throw new \Exception('The input PDF file does not exist');
+        }else if(mime_content_type($sourcePath) !== 'application/pdf'){
+            throw new \Exception('The input file must has the PDF mime type');
         }
     }
 }

@@ -31,8 +31,8 @@ class PdfUtilitiesTest extends TestCase
         ];
 
         $result = PdfUtilities::combinePdfs($srcPaths, $tgtPath);
+        $this->assertFileExists($tgtPath);
         $numPages = PdfUtilities::numPages($tgtPath);
-        $this->assertTrue($result);
         $this->assertTrue($numPages === 4);
 
         unlink($tgtPath);
@@ -46,24 +46,24 @@ class PdfUtilitiesTest extends TestCase
         copy($fileDir.'test2.pdf', $fileDir.'test2_source.pdf');
         $srcPath = $fileDir.'test2_source.pdf';
         $tgtPath = $fileDir.'test2_flatten.pdf';
+        $size = filesize($srcPath);
         
         // Flatten to a new file
-        $result = PdfUtilities::flattenPdf($srcPath, $tgtPath);
-        $this->assertTrue($result);
+        PdfUtilities::flattenPdfFile($srcPath, $tgtPath);
         $this->assertFileExists($tgtPath);
+        $this->assertTrue($size !== filesize($tgtPath));
 
         // Flatten original file
-        $size = filesize($srcPath);
-        $result = PdfUtilities::flattenPdf($srcPath, null);
+        PdfUtilities::flattenPdfFile($srcPath, $srcPath);
         clearstatcache(true, $srcPath);
-        $this->assertTrue($result);
+        $this->assertFileExists($srcPath);
         $this->assertTrue($size !== filesize($srcPath));
 
         unlink($srcPath);
         unlink($tgtPath);
     }
 
-    public function testCompressPdfFile()
+    public function testCompressPdf()
     {
         $fileDir = $this->fileDir();
 
@@ -94,7 +94,7 @@ class PdfUtilitiesTest extends TestCase
         unlink($srcPath);
     }
 
-    public function testCompressPdfData()
+    public function testRotatePdf()
     {
         $fileDir = $this->fileDir();
 
@@ -103,23 +103,24 @@ class PdfUtilitiesTest extends TestCase
         $srcPath = $fileDir.'test2_source.pdf';
         $tgtPath = $fileDir.'test2_compressed.pdf';
         $size = filesize($srcPath);
-        $content = file_get_contents($srcPath);
-
-        // compress to a new file using content
-        $result = PdfUtilities::compressPdfData($content, $tgtPath, 'screen');
+        
+        // rotate to a new file using path
+        $result = PdfUtilities::rotatePdfFile($srcPath, $tgtPath, 90);
         $this->assertFileExists($tgtPath);
-        $this->assertTrue($size > filesize($tgtPath));
         $this->assertTrue(mime_content_type($tgtPath) === 'application/pdf');
         unlink($tgtPath);
 
-        // compress to a new file using path and returning content
-        $contentOut = PdfUtilities::compressPdfData($content, null, 'screen');
-        file_put_contents($tgtPath, $contentOut);
+        // rotate to a new file using path and returning content
+        $content = PdfUtilities::rotatePdfFile($srcPath, null, 270);
+        file_put_contents($tgtPath, $content);
         $this->assertFileExists($tgtPath);
-        $this->assertTrue($size > filesize($tgtPath));
         $this->assertTrue(mime_content_type($tgtPath) === 'application/pdf');
         unlink($tgtPath);
 
+        // compress original file using path
+        $result = PdfUtilities::rotatePdfFile($srcPath, $srcPath, 180);
+        $this->assertFileExists($srcPath);
+        $this->assertTrue(mime_content_type($srcPath) === 'application/pdf');
         unlink($srcPath);
     }
 }

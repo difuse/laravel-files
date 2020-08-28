@@ -2,7 +2,7 @@
 
 namespace Helori\LaravelFiles;
 
-use Helori\LaravelFiles\Shell;
+use Symfony\Component\Process\Process;
 use Imagick;
 
 
@@ -21,6 +21,29 @@ class PdfUtilities
             $pages = $imagick->getNumberImages();
         }
         return $pages;
+    }
+
+    /**
+     * Get commonly used arguments to run a Ghostscript command
+     * @return array gs arguments
+     */
+    private static function argsForGs()
+    {
+        return [
+            'gs',
+            // Disables character caching.  Useful only for debugging.
+            '-dNOCACHE',
+            // Quiet startup: suppress normal startup messages, and also do the equivalent of -dQUIET.
+            '-q',
+            // Exit after last file
+            '-dBATCH',
+            // Disables the prompt and pause at the end of each page.  This may be desirable for applications where another program is driving Ghostscript.
+            '-dNOPAUSE',
+            //Restricts  file operations the job can perform.  Strongly recommended for spoolers, conversion scripts or other sensitive environments where a badly written or malicious PostScript program code must be prevented from changing important files.
+            //'-dSAFER',
+            // Selects an alternate initial output device
+            '-sDEVICE=pdfwrite',
+        ];
     }
 
     /**
@@ -47,27 +70,21 @@ class PdfUtilities
             }
         }
 
-        // Disables character caching.  Useful only for debugging.
-        $args = ' -dNOCACHE';
-        // Quiet startup: suppress normal startup messages, and also do the equivalent of -dQUIET.
-        $args .= ' -q';
-        // Exit after last file
-        $args .= ' -dBATCH';
-        // Disables the prompt and pause at the end of each page.  This may be desirable for applications where another program is driving Ghostscript.
-        $args .= ' -dNOPAUSE';
-        //Restricts  file operations the job can perform.  Strongly recommended for spoolers, conversion scripts or other sensitive environments where a badly written or malicious PostScript program code must be prevented from changing important files.
-        //$args .= ' -dSAFER';
-        // Selects an alternate initial output device
-        $args .= ' -sDEVICE=pdfwrite';
+        $args = self::argsForGs();
 
-        
-        $cmd ='gs '.$args.' -sstdout=%stderr -sOutputFile=- '.implode(" ", $inputFilepaths);
-        $result = Shell::runCommandFromPipe($cmd);
+        $args[] = '-sstdout=%stderr';
+        $args[] = '-sOutputFile=-';
+        foreach($inputFilepaths as $inputFilepath){
+            $args[] = $inputFilepath;
+        }
+
+        $process = new Process($args);
+        $process->mustRun();
 
         if(is_null($targetPath)){
-            return $result['output'];
+            return $process->getOutput();
         }else{
-            file_put_contents($targetPath, $result['output']);
+            file_put_contents($targetPath, $process->getOutput());
         }
     }
 
@@ -94,28 +111,23 @@ class PdfUtilities
      */
     public static function flattenPdfData(string $inputData, string $targetPath = null)
     {
-        // Disables character caching.  Useful only for debugging.
-        $args = ' -dNOCACHE';
-        // Quiet startup: suppress normal startup messages, and also do the equivalent of -dQUIET.
-        $args .= ' -q';
-        // Exit after last file
-        $args .= ' -dBATCH';
-        // Disables the prompt and pause at the end of each page.  This may be desirable for applications where another program is driving Ghostscript.
-        $args .= ' -dNOPAUSE';
-        //Restricts  file operations the job can perform.  Strongly recommended for spoolers, conversion scripts or other sensitive environments where a badly written or malicious PostScript program code must be prevented from changing important files.
-        //$args .= ' -dSAFER';
-        // Selects an alternate initial output device
-        $args .= ' -sDEVICE=pdfwrite';
-        // Do not break links
-        $args .= ' -dPrinted=false';
+        $args = self::argsForGs();
 
-        $cmd ='gs '.$args.' -sstdout=%stderr -sOutputFile=- -';
-        $result = Shell::runCommandFromPipe($cmd, $inputData);
+        // Do not break links
+        $args[] = '-dPrinted=false';
+
+        $args[] = '-sstdout=%stderr';
+        $args[] = '-sOutputFile=-';
+        $args[] = '-';
+
+        $process = new Process($args);
+        $process->setInput($inputData);
+        $process->mustRun();
 
         if(is_null($targetPath)){
-            return $result['output'];
+            return $process->getOutput();
         }else{
-            file_put_contents($targetPath, $result['output']);
+            file_put_contents($targetPath, $process->getOutput());
         }
     }
 
@@ -164,13 +176,23 @@ class PdfUtilities
             $pages = $page; // Single page
         }
 
-        $cmd ='pdftk - cat '.$pages.$direction.' output -';
-        $result = Shell::runCommandFromPipe($cmd, $inputData);
+        $args = [
+            'pdftk',
+            '-',
+            'cat',
+            $pages.$direction,
+            'output',
+            '-',
+        ];
+
+        $process = new Process($args);
+        $process->setInput($inputData);
+        $process->mustRun();
 
         if(is_null($targetPath)){
-            return $result['output'];
+            return $process->getOutput();
         }else{
-            file_put_contents($targetPath, $result['output']);
+            file_put_contents($targetPath, $process->getOutput());
         }
     }
 
@@ -206,33 +228,25 @@ class PdfUtilities
             throw new \Exception("Compression mode invalid. Choose one of the following : ".implode(', ', $allowedModes), 500);
         }
 
-        // Disables character caching. Useful only for debugging.
-        $args = ' -dNOCACHE';
-        // Quiet startup: suppress normal startup messages, and also do the equivalent of -dQUIET.
-        $args .= ' -q';
-        // Exit after last file
-        $args .= ' -dBATCH';
-        // Disables the prompt and pause at the end of each page.  This may be desirable for applications where another program is driving Ghostscript.
-        $args .= ' -dNOPAUSE';
-        // Selects an alternate initial output device
-        $args .= ' -sDEVICE=pdfwrite';
+        $args = self::argsForGs();
+
         // Do not break links
-        $args .= ' -dPrinted=false';
+        $args[] = '-dPrinted=false';
 
         // printer : selects output similar to the Acrobat Distiller "Print Optimized" setting.
         // screen : selects low-resolution output similar to the Acrobat Distiller "Screen Optimized" setting.
         // ebook : selects medium-resolution output similar to the Acrobat Distiller "eBook" setting.
         // prepress : selects output similar to Acrobat Distiller "Prepress Optimized" setting.
         // default : selects output intended to be useful across a wide variety of uses, possibly at the expense of a larger output file.
-        $args .= ' -dPDFSETTINGS=/'.$mode;
+        $args[] = '-dPDFSETTINGS=/'.$mode;
         // Controls the automatic orientation selection algorithm : /None or /All or /PageByPage
-        $args .= ' -dAutoRotatePages=/None';
+        $args[] = '-dAutoRotatePages=/None';
         // Embed all fonts so that the PDF can be modified using them
-        $args .= ' -dEmbedAllFonts=false';
+        $args[] = '-dEmbedAllFonts=false';
         // Keep only a subset of used fonts so that the PDF can be visualized correctly
-        $args .= ' -dSubsetFonts=true';
+        $args[] = '-dSubsetFonts=true';
 
-        $args .= ' -dCompatibilityLevel=1.4';
+        $args[] = '-dCompatibilityLevel=1.4';
 
         /*if($blackAndWhite){
             $args .= ' -sProcessColorModel=DeviceGray';
@@ -240,26 +254,31 @@ class PdfUtilities
         }*/
         
         if($forceResolution){
-            $args .= ' -dDownsampleColorImages=true';
-            $args .= ' -dColorImageDownsampleType=/Average'; // /Subsample /Average /Bicubic
-            $args .= ' -dColorImageResolution='.$forceResolution;
+            $args[] = '-dDownsampleColorImages=true';
+            $args[] = '-dColorImageDownsampleType=/Average'; // /Subsample /Average /Bicubic
+            $args .= '-dColorImageResolution='.$forceResolution;
 
-            $args .= ' -dDownsampleGrayImages=true';
-            $args .= ' -dGrayImageDownsampleType=/Average';
-            $args .= ' -dGrayImageResolution='.$forceResolution;
+            $args[] = '-dDownsampleGrayImages=true';
+            $args[] = '-dGrayImageDownsampleType=/Average';
+            $args[] = '-dGrayImageResolution='.$forceResolution;
         }
         
         /*$args .= ' -dDownsampleMonoImages=true';
         $args .= ' -dMonoImageDownsampleType=/Subsample';
         $args .= ' -dMonoImageResolution=300';*/
 
-        $cmd ='gs '.$args.' -sstdout=%stderr -sOutputFile=- -';
-        $result = Shell::runCommandFromPipe($cmd, $inputData);
+        $args[] = '-sstdout=%stderr';
+        $args[] = '-sOutputFile=-';
+        $args[] = '-';
+
+        $process = new Process($args);
+        $process->setInput($inputData);
+        $process->mustRun();
 
         if(is_null($targetPath)){
-            return $result['output'];
+            return $process->getOutput();
         }else{
-            file_put_contents($targetPath, $result['output']);
+            file_put_contents($targetPath, $process->getOutput());
         }
     }
 

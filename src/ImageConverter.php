@@ -3,6 +3,7 @@
 namespace Helori\LaravelFiles;
 
 use Intervention\Image\ImageManagerStatic as Image;
+use Symfony\Component\Process\Process;
 
 
 class ImageConverter
@@ -66,22 +67,26 @@ class ImageConverter
         $h = self::$dpiA4HeightFactor * $opts['dpi'];
         $m = 2 * ($w * $marginWidthPercent);
 
-        $args = "-background white";
-        //$args .= " -page a4";
-        $args .= " -units PixelsPerInch";
-        $args .= " -density {$opts['dpi']}";
-        $args .= " -bordercolor white";
-        $args .= " -border {$m}";
-        $args .= " -resize {$w}x{$h}"; // keeps aspect ratio (result is contained in the box)
-        //$args .= " -repage {$w}x{$h}";
-        $args .= " -gravity center";
-        $args .= " -extent {$w}x{$h}";
-        $args .= " -compress Zip";
-        $args .= " -quality 100";
-        $args .= " -flatten";
-        $args .= " {$imgPath} {$pdfPath}";
+        $args = [
+            'convert',
+            '-units', 'PixelsPerInch',
+            '-density', $opts['dpi'],
+            '-flatten',
+            '-quality', '100',
+            '-compress', 'Zip',
+            '-extent', $w.'x'.$h,
+            '-resize', $w.'x'.$h,// keeps aspect ratio (result is contained in the box)
+            '-gravity', 'center',
+            '-border', $m,
+            '-bordercolor', 'white',
+            '-background', 'white',
+            //'-page', 'a4',
+            $imgPath,
+            $pdfPath,
+        ];
 
-        Shell::runCommand('convert '.$args);
+        $process = new Process($args);
+        $process->mustRun();
 
         if(!is_file($pdfPath)){
             throw new \Exception("The file \"".$pdfPath."\" has not been created", 500);
@@ -115,23 +120,30 @@ class ImageConverter
         if($mime !== 'application/pdf'){
             throw new \Exception("The file \"".$pdfPath."\" is not a PDF", 500);
         }
-        
-        $pdfSafePath = escapeshellarg($pdfPath);
-        $imgSafePath = escapeshellarg($imgPath);
 
-        $args = "-units PixelsPerInch";
-        $args .= " -density {$opts['dpi']}";
+        $args = [
+            'convert',
+            '-units',
+            'PixelsPerInch',
+            '-density',
+            $opts['dpi'],
+            $pdfPath.'['.$opts['page'].']',
+            '-flatten',
+            '-quality',
+            $opts['quality'],
+        ];
+
         if($opts['trim']){
-            $args .= " -trim";  
+            $args[] = '-trim';
         }
-        $args .= " {$pdfSafePath}[{$opts['page']}]";
-        $args .= " -flatten";
-        $args .= " -quality {$opts['quality']}";
 
         if(!is_null($imgPath)){
 
-            $args .= " {$imgSafePath}";
-            Shell::runCommand('convert '.$args);
+            $args[] = $imgPath;
+            
+            $process = new Process($args);
+            $process->mustRun();
+            
             if(!is_file($imgPath)){
                 throw new \Exception("The file \"".$imgPath."\" has not been created", 500);
             }
@@ -139,9 +151,12 @@ class ImageConverter
 
         }else{
 
-            $args .= " jpg:-"; // Magic syntax to send to STDOUT
-            $result = Shell::runCommand('convert '.$args, true, true);
-            return $result['output'];
+            $args[] = 'jpg:-';
+
+            $process = new Process($args);
+            $process->mustRun();
+
+            return $process->getOutput();
         }
     }
 }

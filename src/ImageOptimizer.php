@@ -2,7 +2,7 @@
 
 namespace Helori\LaravelFiles;
 
-use Helori\LaravelFiles\Shell;
+use Symfony\Component\Process\Process;
 
 
 class ImageOptimizer
@@ -80,28 +80,33 @@ class ImageOptimizer
             throw new \Exception("The mime type $mime doesn't correspond to a GIF file", 500);
         }
 
-        // Turn interlacing on
-        $args = ' --interlace';
-        // Optimize output GIF animations for space. Level determines how much optimization is done; higher levels take longer, but may have better results. There are currently three levels
-        // 1 : Stores only the changed portion of each image. This is the default.
-        // 2 : Also uses transparency to shrink the file further. 
-        // 3 : Try several optimization methods (usually slower, sometimes better results)
-        $args .= ' --optimize=2';
+        $args = [
+            'gifsicle',
+            // Turn interlacing on
+            '--interlace',
+            // Optimize output GIF animations for space. Level determines how much optimization is done; higher levels take longer, but may have better results. There are currently three levels
+            // 1 : Stores only the changed portion of each image. This is the default.
+            // 2 : Also uses transparency to shrink the file further. 
+            // 3 : Try several optimization methods (usually slower, sometimes better results)
+            '--optimize=2',
+        ];
         
         if(!is_null($targetPath)){
 
             // Send output to file. The special filename ‘-’ means the standard output
-            $args .= ' --output '.escapeshellarg($targetPath);
+            $args[] = '--output';
+            $args[] = $targetPath;
 
         }else{
 
             // Modify each GIF input in place by reading and writing to the same filename
-            $args .= ' --batch';
+            $args[] = '--batch';
         }
 
-        $args .= ' '.escapeshellarg($imgPath);
+        $args[] = $imgPath;
 
-        Shell::runCommand('gifsicle '.$args);
+        $process = new Process($args);
+        $process->mustRun();
 
         return true;
     }
@@ -132,28 +137,34 @@ class ImageOptimizer
             throw new \Exception("The mime type $mime doesn't correspond to a PNG file", 500);
         }
 
-        // Remove optional chunks (metadata) from PNG files 
-        // INCOMPATIBLE WITH MAX VERSION 2.5 ON UBUNTU 16.04
-        //$args = ' --strip';
-        // Overwrite existing output files. “--ext .png --force” can be used to convert files in place (which is unsafe).
-        $args = ' --force';
-        // --quality min-max : min and max are numbers in range 0 (worst) to 100 (perfect), similar to JPEG. pngquant will use the least amount of colors required to meet or exceed the max quality. If conversion results in quality below the min quality the image won't be saved (or if outputting to stdin, 24-bit original will be output) and pngquant will exit with status code 99.
-        $args .= ' --quality 0-'.$quality;
+        $args = [
+            'pngquant',
+            // Remove optional chunks (metadata) from PNG files 
+            // INCOMPATIBLE WITH MAX VERSION 2.5 ON UBUNTU 16.04
+            //' --strip',
+            // Overwrite existing output files. “--ext .png --force” can be used to convert files in place (which is unsafe).
+            '--force',
+            // --quality min-max : min and max are numbers in range 0 (worst) to 100 (perfect), similar to JPEG. pngquant will use the least amount of colors required to meet or exceed the max quality. If conversion results in quality below the min quality the image won't be saved (or if outputting to stdin, 24-bit original will be output) and pngquant will exit with status code 99.
+            '--quality', '0-'.$quality,
+        ];
 
         if(!is_null($targetPath)){
 
             // Writes converted file to the given path. When this option is used only single input file is allowed.
-            $args .= ' --output '.escapeshellarg($targetPath);
+            $args[] = '--output';
+            $args[] = $targetPath;
         
         }else{
 
             // File extension (suffix) to use for output files instead of the default ‘-fs8.png’ or ‘-or8.png’.
-            $args .= ' --ext .png';
+            $args[] = '--ext';
+            $args[] = '.png';
         }
 
-        $args .= ' '.escapeshellarg($imgPath);
+        $args[] = $imgPath;
 
-        Shell::runCommand('pngquant '.$args);
+        $process = new Process($args);
+        $process->mustRun();
 
         return true;
     }
@@ -185,30 +196,34 @@ class ImageOptimizer
             throw new \Exception("The mime type $mime doesn't correspond to a JPEG file", 500);
         }
 
-        $args = '-m'.$quality;
-        // Strip all markers from output file. (NOTE! by default only Comment & Exif/IPTC/PhotoShop/ICC/XMP markers are kept, everything else is discarded)
-        $args .= ' --strip-all';
-        // Strip EXIF markers from output file.
-        $args .= ' --strip-exif';
-        // Strip IPTC / Adobe Photoshop (APP13) markers from output file.
-        $args .= ' --strip-iptc';
-        // Strip ICC profiles from output file.
-        $args .= ' --strip-icc';
-        // Strip XMP profiles from output file.
-        $args .= ' --strip-xmp';
-        // Quiet mode
-        $args .= ' --quiet';
+        $args = [
+            'jpegoptim',
+            '-m'.$quality,
+            // Strip all markers from output file. (NOTE! by default only Comment & Exif/IPTC/PhotoShop/ICC/XMP markers are kept, everything else is discarded)
+            '--strip-all',
+            // Strip EXIF markers from output file.
+            '--strip-exif',
+            // Strip IPTC / Adobe Photoshop (APP13) markers from output file.
+            '--strip-iptc',
+            // Strip ICC profiles from output file.
+            '--strip-icc',
+            // Strip XMP profiles from output file.
+            '--strip-xmp',
+            // Quiet mode
+            '--quiet',
+        ];
 
         if(is_null($targetPath)){
 
-            $args .= ' '.escapeshellarg($imgPath);
+            $args[] = $imgPath;
 
         }else{
 
             // Force optimization, even if the result would be larger than the original file.
-            $args .= ' --force';
+            $args[] = '--force';
             // Send output image to standard output. Note, if optimization didn't create smaller file than the input file, then no output (image) is sent to standard output. (Option --force can be used to force output of image always, even if optimized image was not smaller than input).
-            $args .= ' --stdout '.escapeshellarg($imgPath).' > '.escapeshellarg($targetPath);
+            $args[] = '--stdout';
+            $args[] = $imgPath; //.' > '.$targetPath;
 
             // Overwrite target file even if it exists (when using -d option).
             //$args .= ' --overwrite';
@@ -216,7 +231,12 @@ class ImageOptimizer
             //$args .= ' --dest='.escapeshellarg($targetPath);
         }
 
-        Shell::runCommand('jpegoptim '.$args);
+        $process = new Process($args);
+        $process->mustRun();
+
+        if(!is_null($targetPath)){
+            file_put_contents($targetPath, $process->getOutput());
+        }
 
         return true;
     }

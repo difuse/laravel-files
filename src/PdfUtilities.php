@@ -257,7 +257,7 @@ class PdfUtilities
             $args[] = '-dDownsampleColorImages=true';
             $args[] = '-dColorImageDownsampleType=/Average'; // /Subsample /Average /Bicubic
             $args[] = '-dColorImageResolution='.$forceResolution;
-
+            
             $args[] = '-dDownsampleGrayImages=true';
             $args[] = '-dGrayImageDownsampleType=/Average';
             $args[] = '-dGrayImageResolution='.$forceResolution;

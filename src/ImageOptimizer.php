@@ -106,6 +106,7 @@ class ImageOptimizer
         $args[] = $imgPath;
 
         $process = new Process($args);
+        $process->setTimeout(60 * 5);
         $process->mustRun();
 
         return true;
@@ -164,6 +165,7 @@ class ImageOptimizer
         $args[] = $imgPath;
 
         $process = new Process($args);
+        $process->setTimeout(60 * 5);
         $process->mustRun();
 
         return true;
@@ -232,6 +234,7 @@ class ImageOptimizer
         }
 
         $process = new Process($args);
+        $process->setTimeout(60 * 5);
         $process->mustRun();
 
         if(!is_null($targetPath)){

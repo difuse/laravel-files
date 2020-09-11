@@ -79,6 +79,7 @@ class PdfUtilities
         }
 
         $process = new Process($args);
+        $process->setTimeout(60 * 5);
         $process->mustRun();
 
         if(is_null($targetPath)){
@@ -122,6 +123,7 @@ class PdfUtilities
 
         $process = new Process($args);
         $process->setInput($inputData);
+        $process->setTimeout(60 * 5);
         $process->mustRun();
 
         if(is_null($targetPath)){
@@ -187,6 +189,7 @@ class PdfUtilities
 
         $process = new Process($args);
         $process->setInput($inputData);
+        $process->setTimeout(60 * 5);
         $process->mustRun();
 
         if(is_null($targetPath)){
@@ -273,6 +276,7 @@ class PdfUtilities
 
         $process = new Process($args);
         $process->setInput($inputData);
+        $process->setTimeout(60 * 5);
         $process->mustRun();
 
         if(is_null($targetPath)){

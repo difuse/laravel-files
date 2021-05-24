@@ -86,6 +86,7 @@ class ImageConverter
         ];
 
         $process = new Process($args);
+        $process->setTimeout(60 * 5);
         $process->mustRun();
 
         if(!is_file($pdfPath)){
@@ -142,6 +143,7 @@ class ImageConverter
             $args[] = $imgPath;
             
             $process = new Process($args);
+            $process->setTimeout(60 * 5);
             $process->mustRun();
             
             if(!is_file($imgPath)){
@@ -154,6 +156,7 @@ class ImageConverter
             $args[] = 'jpg:-';
 
             $process = new Process($args);
+            $process->setTimeout(60 * 5);
             $process->mustRun();
 
             return $process->getOutput();

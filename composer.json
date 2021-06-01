@@ -18,7 +18,6 @@
         }
     ],
     "require": {
-        "ext-imagick" : "*",
         "setasign/fpdf": "^1.8",
         "setasign/fpdi": "^2.0",
         "intervention/image": "2.*",

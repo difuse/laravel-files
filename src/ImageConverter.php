@@ -73,7 +73,8 @@ class ImageConverter
             $constraint->upsize();
         })->encode('jpg', 75);
 
-        $newPath = storage_path('tmp/'.Str::random(15).'.jpg');
+        $relativePath = 'tmp/'.Str::random(15).'.jpg';
+        $newPath = storage_path($relativePath);
         $image->save($newPath);
 
         $args = [
@@ -90,7 +91,7 @@ class ImageConverter
             '-bordercolor', 'white',
             '-background', 'white',
             //'-page', 'a4',
-            $imgPath,
+            $newPath,
             $pdfPath,
         ];
 
@@ -100,6 +101,9 @@ class ImageConverter
         if(!is_file($pdfPath)){
             throw new \Exception("The file \"".$pdfPath."\" has not been created", 500);
         }
+
+        // Delete temp file
+        \Storage::disk('storage')->delete($relativePath);
 
         return true;
     }

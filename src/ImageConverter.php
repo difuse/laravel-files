@@ -2,6 +2,7 @@
 
 namespace Helori\LaravelFiles;
 
+use Illuminate\Support\Str;
 use Intervention\Image\ImageManagerStatic as Image;
 use Symfony\Component\Process\Process;
 
@@ -66,6 +67,14 @@ class ImageConverter
         $w = self::$dpiA4WidthFactor * $opts['dpi'];
         $h = self::$dpiA4HeightFactor * $opts['dpi'];
         $m = 2 * ($w * $marginWidthPercent);
+
+        $image = Image::make($imgPath)->resize($w, null, function($constraint) {
+            $constraint->aspectRatio();
+            $constraint->upsize();
+        })->encode('jpg', 75);
+
+        $newPath = storage_path('tmp/'.Str::random(15).'.jpg');
+        $image->save($newPath);
 
         $args = [
             'convert',

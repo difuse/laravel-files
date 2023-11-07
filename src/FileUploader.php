@@ -72,7 +72,7 @@ class FileUploader
             if(!$file->isValid()){
                 abort(422, "Invalid file");
             }
-            
+
             // -----------------------------------------------------------
             //  Get uploaded file infos
             // -----------------------------------------------------------
@@ -127,7 +127,7 @@ class FileUploader
             ];
 
             return $item;
-        
+
         }else{
             abort(422, 'No input file found for '.$fileParam);
         }
@@ -154,7 +154,7 @@ class FileUploader
         $filename = $infos['basename'];
         $absDir = $infos['dirname'];
         $relDir = substr($filepath, 0, strripos($filepath, $filename) - 1);
-        
+
         $new_slug = Str::slug($newFilenameNoExt, '-');
         $new_filename = $new_slug.'.'.$ext;
         $new_filepath = $relDir.'/'.$new_filename;
@@ -177,10 +177,10 @@ class FileUploader
             return $filepath;
 
         }else if(Storage::has($filepath)){
-            
+
             // filepath is a relative path
             return storage_path('app').'/'.$filepath;
-        
+
         }else{
             abort(404, "File not found");
         }
@@ -188,17 +188,22 @@ class FileUploader
 
     public static function downloadOrOpenFile(string $filepath, string $filename, bool $forceDownload)
     {
-        $abspath = self::absPath($filepath);
+        if(filter_var($filepath, FILTER_VALIDATE_URL)) {
+            $file = fopen($filepath, 'r');
+            $ext = pathinfo($filepath, PATHINFO_EXTENSION);
+        } else {
+            $file = self::absPath($filepath);
+            $ext = pathinfo($file, PATHINFO_EXTENSION);
+        }
 
-        $infos = pathinfo($abspath);
-        $mime = mime_content_type($abspath);
-        $ext = $infos['extension'];
+        $mime = mime_content_type($file);
+
         $browserCanDisplay = Str::contains($mime, ['image', 'pdf']);
         $filenameExt = ($filename ? $filename.'.'.$ext : null);
 
         if($browserCanDisplay && !$forceDownload){
 
-            return response()->file($abspath, [
+            return response()->file($file, [
                 'Content-Type' => $mime,
                 'Content-Disposition' => 'inline; filename="'.$filenameExt.'"',
                 'Cache-Control' => 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0',
@@ -206,7 +211,7 @@ class FileUploader
 
         }else{
 
-            return response()->download($abspath, $filenameExt, [
+            return response()->download($file, $filenameExt, [
                 'Cache-Control' => 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0',
             ]);
         }

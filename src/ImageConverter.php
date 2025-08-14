@@ -2,6 +2,7 @@
 
 namespace Helori\LaravelFiles;
 
+use Illuminate\Support\Str;
 use Intervention\Image\ImageManagerStatic as Image;
 use Symfony\Component\Process\Process;
 
@@ -67,6 +68,15 @@ class ImageConverter
         $h = self::$dpiA4HeightFactor * $opts['dpi'];
         $m = 2 * ($w * $marginWidthPercent);
 
+        $image = Image::make($imgPath)->resize($w, null, function($constraint) {
+            $constraint->aspectRatio();
+            $constraint->upsize();
+        })->encode('jpg', 75);
+
+        $relativePath = 'tmp/'.Str::random(15).'.jpg';
+        $newPath = storage_path($relativePath);
+        $image->save($newPath);
+
         $args = [
             'convert',
             '-units', 'PixelsPerInch',
@@ -81,7 +91,7 @@ class ImageConverter
             '-bordercolor', 'white',
             '-background', 'white',
             //'-page', 'a4',
-            $imgPath,
+            $newPath,
             $pdfPath,
         ];
 
@@ -92,6 +102,9 @@ class ImageConverter
         if(!is_file($pdfPath)){
             throw new \Exception("The file \"".$pdfPath."\" has not been created", 500);
         }
+
+        // Delete temp file
+        \Storage::disk('storage')->delete($relativePath);
 
         return true;
     }
